@@ -25,13 +25,13 @@ library(ggtree)
 
 
 ```{r}
-gvcf <- ("~/Documents/new_tetraploids/Mpileup/filtered_tetraploid_variants.recode.vcf")
+gvcf <- ("~/Documents/new_tetraploids/filtered_tetraploid_variants.recode.vcf")
 mybgvcf <- bgzip(gvcf)
 indexTabix(mybgvcf, format = "vcf")
 ```
-
+#initial filtering of file
 ```{r}
-Rdat <- VCF2RADdata(mybgvcf, phaseSNPs = F, expectedAlleles = 400000, expectedLoci = 500000, min.ind.with.minor.allele = 2,min.ind.with.reads = 109 , refgenome = "/Users/pesta/Documents/potato_dm_v404_all_pm_un.fasta",taxaPloidy = 2)
+Rdat <- VCF2RADdata(mybgvcf, phaseSNPs = F, expectedAlleles = 400000, expectedLoci = 500000, min.ind.with.minor.allele = 2,min.ind.with.reads = 109 , refgenome = "/Users/pesta/Documents/potato_dm_v404_all_pm_un.fasta",taxaPloidy = 4)
 ```
 
 
@@ -47,11 +47,11 @@ abline(v = 0.5, col = "blue", lwd = 2)
 #cutoff of 0.75 for tetraploids
 ```{r}
 Rdat<- AddAlleleFreqHWE(Rdat)
-theseloci <- GetLoci(Rdat)[Rdat$alleles2loc[Rdat$alleleFreq >= 0.02 & Rdat$alleleFreq < 0.75]]
+theseloci <- GetLoci(Rdat)[Rdat$alleles2loc[Rdat$alleleFreq >= 0.05 & Rdat$alleleFreq < 0.75]]
 theseloci <- unique(theseloci)
-#peg(filename = "HindHe.jpeg")
+#jpeg(filename = "HindHe.jpeg")
 hist(myhindheByLoc[theseloci], col = "lightgrey",
-     xlab = "Hind/He", main = "Histogram of Hind/He by locus, MAF >= 0.02", breaks = 100)
+     xlab = "Hind/He", main = "Histogram of Hind/He by locus, MAF >= 0.05", breaks = 100)
 abline(v = 0.75, col = "blue", lwd = 2)
 
 ```
@@ -63,7 +63,7 @@ keeploci <- names(myhindheByLoc)[myhindheByLoc < 0.75] #Keeping loci less than 0
 mydata<- SubsetByLocus(Rdat, keeploci)
 ```
 
-To impute using simulated population structure:
+#To impute using simulated population structure:
 ```{r}
 mydata_popstruct <- IteratePopStruct(mydata)
 ```
@@ -76,10 +76,9 @@ hist(mydataHWE$alleleFreq, breaks = 20, col = "lightgrey")
 ```{r}
 RdatProbGen <- GetProbableGenotypes(mydata_popstruct)
 tetraploid_imput_gen <- RdatProbGen[["genotypes"]]
-#This will be the new dataset to work with for diversity analysis for the diploids
 t_tetraploid_imput_gen <- t(tetraploid_imput_gen)
 
-write.csv(tetraploid_imput_gen, file = "~/Documents/sandbox/tetraploid/tetra_NAIVE_geno_7723.csv")
+write.csv(tetraploid_imput_gen, file = "~/Documents/sandbox/tetraploid/tetra_NAIVE_geno_7723.csv") #geno file to be used to add population names to structure file
 
 ```
 
@@ -87,11 +86,11 @@ write.csv(tetraploid_imput_gen, file = "~/Documents/sandbox/tetraploid/tetra_NAI
 
 ```{r}
 
-imput_gen <- read.csv("~/Documents/sandbox/tetraploid/tetra_geno_7723.csv")
+imput_gen <- read.csv("~/Documents/tetraploid/tetra_geno_7723.csv")
 ```
 
 
-For the Naive method only
+#For the Naive method only (we will use this method when estimating population structure)
 ```{r}
 Rdat_naive <- AddGenotypePriorProb_Even(mydata)
 Rdat_Naive <- AddGenotypeLikelihood(Rdat_Naive)
@@ -102,22 +101,23 @@ Rdat_Naive <- AddPloidyChiSq(Rdat_Naive)
 ```{r}
 RdatProbGen <- GetProbableGenotypes(Rdat_Naive)
 tetraploid_imput_gen <- RdatProbGen[["genotypes"]]
-#This will be the new dataset to work with for diversity analysis for the diploids
 t_tetraploid_imput_gen <- t(tetraploid_imput_gen)
 
-write.csv(tetraploid_imput_gen, file = "~/Documents/sandbox/tetraploid/tetra_NAIVE_geno_7723.csv")
+#write.csv(tetraploid_imput_gen, file = "~/Documents/tetraploid/tetra_NAIVE_geno_7723.csv") #Naive genotypes
 
 ```
 
 
-#Read in imputed geotypes of choice. 
+#Read in imputed geotypes of choice (Naive or not). 
 ```{r}
 
-imput_gen <- read.csv("~/Documents/sandbox/tetraploid/tetra_geno_7723.csv")
+imput_gen <- read.csv("~/Documents/tetraploid/tetra_geno_7723.csv")
 ```
 
 ```{r}
-#finding those that are == 4x and 2x
+#finding those that are == 4x and 2x from the passport data
+#The next steps are to add population names for the final file
+ploidycalls <- read.csv("~/Documents/ploidycall_filt_for_analysis.csv")
 tet <- as.data.frame(ploidycalls[ploidycalls$Bamberg == "4",])
 dip <- as.data.frame(ploidycalls[ploidycalls$Bamberg == "2",])
 #combine the datasets
@@ -136,7 +136,7 @@ colnames(tetdip3)[1] <- "full"
 ```
 
 
-remove rows that do not contain sample name in names vector
+remove rows that do not contain sample name in names vector (to find tetraploid inds)
 ```{r}
 tet_dip_filt <- tetdip3[tetdip3$full %in% names,]
 ```
@@ -147,7 +147,7 @@ Using the names file from the imputed genotypes in polyrad to sort on the other 
 Names <- as.data.frame(imput_gen[1])
 
 ```
-
+#putting everything in correct order
 ```{r}
 dipt_tet.complete <- tet_dip_filt[order(match(tet_dip_filt[,1], Names$X)),]
 rownames(dipt_tet.complete) <- NULL
@@ -173,7 +173,7 @@ populations <- ifelse(species_ploidy$species == "tbr" & species_ploidy$status !=
                                 ))
 ```
 
-Binding together individuals that are 4x and not genetic material
+#Binding together individuals that are 4x and not genetic material
 ```{r}
 populations.df <- as.data.frame(populations) #make df
 populations.assigned <- cbind(species_ploidy, populations.df)
@@ -198,7 +198,7 @@ populations.assigned$region[populations.assigned$region == "Chile"] <- "chile"
 
 ```
 
-#Assigning meaningful populations for export to GenoDive
+#Assigning meaningful populations (numbers) for export to GenoDive
 ```{r}
 populations.8 <- ifelse(populations.assigned$region == "US" & populations.assigned$status != "genetic material"& populations.assigned$species == "tbr", "1", 
                     ifelse(populations.assigned$region == "canada" & populations.assigned$status != "genetic material"& populations.assigned$species == "tbr", "1", 
@@ -227,7 +227,7 @@ populations.8 <- ifelse(populations.assigned$region == "US" & populations.assign
 ```
 
 
-bind species ploidy and populations together
+#bind species ploidy and populations together
 ```{r}
 structure_format.file <- cbind(populations.8, species_ploidy)
 rownames(structure_format.file) <- NULL
@@ -237,5 +237,5 @@ colnames(p) <- NULL
 ```
 
 ```{r}
-Export_Structure(mydata_popstruct, file = "~/Documents/sandbox/tetraploid/tetra_original_structure_7723", extraCols = p)
+Export_Structure(mydata_popstruct, file = "~/Documents/tetraploid/tetra_original_structure_7723", extraCols = p)
 ```
