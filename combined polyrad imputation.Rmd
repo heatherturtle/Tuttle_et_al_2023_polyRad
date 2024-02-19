@@ -36,12 +36,12 @@ gvcf <- ("filtered_diptet_variants.recode.vcf")
 mybgvcf <- bgzip(gvcf)
 indexTabix(mybgvcf, format = "vcf")
 ```
-
+#initial vcf filtering 
 ```{r}
 Rdat <- VCF2RADdata(mybgvcf, expectedAlleles = 4000000, expectedLoci = 5000000, min.ind.with.reads = 109, min.ind.with.minor.allele = 2, refgenome = "/Users/pesta/Documents/potato_dm_v404_all_pm_un.fasta", phaseSNPs = F, taxaPloidy = c)
 ```
-
-loci with hind/he over 0.75
+#splitting up loci into diploid and tetraploid to filter seprateley
+#loci with hind/he over 0.75 (tetraploid)
 ```{r}
 myhindhe <- HindHe(Rdat)
 myhindheByLoc <- colMeans(myhindhe, na.rm = TRUE)
@@ -50,7 +50,7 @@ hist(myhindheByLoc, col = "lightgrey",
 abline(v = 0.75, col = "blue", lwd = 2)
 ```
 
-over 0.5
+over 0.5 (diploid)
 ```{r}
 Rdat <- AddAlleleFreqHWE(Rdat)
 theseloci <- GetLoci(Rdat)[Rdat$alleles2loc[Rdat$alleleFreq >= 0.02 & Rdat$alleleFreq < 0.5]]
@@ -91,7 +91,7 @@ TotDepthT <- rowSums(Rdat$locDepth)
 myHindHeByInd <- rowMeans(myhindhe, na.rm = T)
 ```
 
-Diploids are expected to be around 0.5 and tetraploids around 0.75. Since there is some population structure, most individuals show a lower value.
+Diploids are expected to be around 0.5 and tetraploids around 0.75. Since there is some population structure, most individuals show a lower value per clark.
 ```{r}
 #png(filename = "hind_readdepth_ploidy.png", width = 5, height = 5, units = "in", res = 300)
 ggplot(data.frame(Depth = TotDepthT, HindHe = myHindHeByInd,
@@ -168,7 +168,7 @@ hist(RdatPopStruct$alleleFreq, breaks = 20, col = "lightgrey")
 ```{r}
 RdatProbGen <- GetProbableGenotypes(RdatPopStruct)
 imput_gen <- RdatProbGen[["genotypes"]]
-write.csv(imput_gen, file = "geno_combined_7723.csv", quote = F) #naive file is:naive_geno.csv
+write.csv(imput_gen, file = "geno_combined_7723.csv", quote = F) #combined genotype file
 ```
 
 
@@ -176,7 +176,7 @@ To generate structure file to be used with genoDive
 Use either one of the csv files containing imputed genotypes of choice
 
 ```{r}
-imput_gen <- read.csv("geno_combined_7723.csv")
+imput_gen <- read.csv("geno_combined_7723.csv") #generated above
 ```
 
 
@@ -185,7 +185,7 @@ imput_gen <- read.csv("geno_combined_7723.csv")
 names <- imput_gen[,1]
 ```
 
-#in repository
+#in repository mainbranch on github
 ```{r}
 ploidycalls <- read.csv("ploidycall_filt_for_analysis.csv")
 #remove column 6
@@ -195,7 +195,7 @@ ploidycalls <- read.csv("ploidycall_filt_for_analysis.csv")
 
 ```{r}
 
-tet <- as.data.frame(ploidycalls[ploidycalls$Bamberg == "4",])
+tet <- as.data.frame(ploidycalls[ploidycalls$Bamberg == "4",]) #splitting the data into dip/tet
 dip <- as.data.frame(ploidycalls[ploidycalls$Bamberg == "2",])
 #combine the datasets
 tet_dip <- rbind(tet,dip)
