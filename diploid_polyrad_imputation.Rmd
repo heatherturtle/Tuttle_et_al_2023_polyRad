@@ -106,7 +106,7 @@ colnames(structure_file)[1] <- "sampleID"
 #Read in the metadata file from filtered calls to pull out species and population information
 
 ```{r}
-ploidycalls <- read.csv("~/Documents/ploidycall_filt_for_analysis.csv")
+ploidycalls <- read.csv("~/Documents/ploidycall_filt_for_analysis.csv") # file in main branch of github
 #remove column 6
 #ploidycalls <- ploidycalls[,-6]
 ```
@@ -118,7 +118,7 @@ rownames(tet) <- NULL
 
 ```
 
-#There were individuals that were removed due to low coverage in polyRad. use sample_name_tetras to filter out 
+#There were individuals that were removed due to low coverage in polyRad. use sample_name_diploid (geno file generated above - line 91) to filter out 
 which ones were removed (from the imputed genotypes file)
 
 ```{r}
