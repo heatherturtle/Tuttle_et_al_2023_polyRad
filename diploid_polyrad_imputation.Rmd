@@ -8,7 +8,7 @@ output: html_document
 
 #PolyRad imputation
 ```{r}
-if (!requireNamespace("BiocManager", quietly = TRUE))
+if (!requireNamespace("BiocManager", quietly = TRUE)) #installing packages
     install.packages("BiocManager")
 
 BiocManager::install("VariantAnnotation")
@@ -17,7 +17,7 @@ library(VariantAnnotation)
 
 
 ```{r}
-library(VariantAnnotation)
+library(VariantAnnotation) #loading libraries
 library(polyRAD)
 library(Rsamtools)
 library(pcaMethods)
@@ -27,13 +27,14 @@ library(ggtree)
 ```
 
 ```{r}
-gvcf <- ("/Users/pesta/Documents/new_diploids/Mpileup/filtered_diploid_variants_maxmiss6_GQ30.recode.vcf")
+gvcf <- ("filtered_diploid_variants_maxmiss6_GQ30.recode.vcf") #load diploid vcf
 mybgvcf <- bgzip(gvcf)
 #indexTabix(mybgvcf, format = "vcf")
 ```
 
 ```{r}
 Rdat <- VCF2RADdata(mybgvcf, taxaPloidy = 2, expectedAlleles = 400000, expectedLoci = 500000,min.ind.with.reads = 10, min.ind.with.minor.allele = 2, refgenome = "~/Documents/potato_dm_v404_all_pm_un.fasta", phaseSNPs = F)
+#initial filtering of vcf
 ```
 
 ```{r}
@@ -48,11 +49,11 @@ abline(v = 0.5, col = "blue", lwd = 2)
 
 ```{r}
 Rdat<- AddAlleleFreqHWE(Rdat)
-theseloci <- GetLoci(Rdat)[Rdat$alleles2loc[Rdat$alleleFreq >= 0.02 & Rdat$alleleFreq < 0.5]]
+theseloci <- GetLoci(Rdat)[Rdat$alleles2loc[Rdat$alleleFreq >= 0.05 & Rdat$alleleFreq < 0.5]]
 theseloci <- unique(theseloci)
 #peg(filename = "HindHe.jpeg")
 hist(myhindheByLoc[theseloci], col = "lightgrey",
-     xlab = "Hind/He", main = "Histogram of Hind/He by locus, MAF >= 0.02", breaks = 25)
+     xlab = "Hind/He", main = "Histogram of Hind/He by locus, MAF >= 0.05", breaks = 25)
 abline(v = 0.5, col = "blue", lwd = 2)
 
 #dev.off()
@@ -67,7 +68,7 @@ mydata <- SubsetByLocus(Rdat, goodMarkers)
 
 
 #Using a naive model for diploids. Sample size too low to simulate populations
-
+#Can only use a naive model for diploids since there are a low amount of inds
 ```{r}
 mydataNaive <- AddGenotypePriorProb_Even(mydata)
 mydataNaive <- AddGenotypeLikelihood(mydataNaive)
@@ -80,14 +81,14 @@ mydataNaive <- AddPloidyChiSq(mydataNaive)
 RdatProbGen <- GetProbableGenotypes(mydataNaive)
 diploid_imput_gen <- RdatProbGen[["genotypes"]]
 #Make csv to then turn into structure file
-write.csv(diploid_imput_gen, file = "~/Documents/sandbox/diploid/diploid_geno_7723.csv")
+write.csv(diploid_imput_gen, file = "~/Documents/diploid/diploid_geno_7723.csv")
 
 ```
 
 
 The structure file needs population information to be read in by GenoDive
 ```{r}
-structure_file <- read.csv("~/Documents/sandbox/diploid/diploid_geno_7723.csv", header = T, stringsAsFactors = T, row.names = NULL, fill = T)
+structure_file <- read.csv("~/Documents/diploid/diploid_geno_7723.csv", header = T, stringsAsFactors = T, row.names = NULL, fill = T)
 ```
 
 #To add names/populations for GenoDive
@@ -121,7 +122,7 @@ rownames(tet) <- NULL
 which ones were removed (from the imputed genotypes file)
 
 ```{r}
-sample_names_diploid <- read.table("~/Documents/sandbox/diploid/diploid_geno_7723.csv", header = T, sep = ",")
+sample_names_diploid <- read.table("~/Documents/diploid/diploid_geno_7723.csv", header = T, sep = ",")
 colnames(sample_names_diploid)[1]<- "full"
 ```
 
@@ -129,19 +130,20 @@ colnames(sample_names_diploid)[1]<- "full"
 ```{r}
 sample_names_diploid2 <- as.data.frame(gsub("cutadapt_bowtie_sort_rg_marked.bam", "cutadapt_bowtie2_sort_rg_marked.bam", sample_names_tetras$full))
 ```
-
+#bind the columns and change column 2 to Sample ID
+#We are doing it this way to ensure nothing is mixed up and we are keeping order
 ```{r}
 sample_names_bind <- cbind(sample_names_diploid2,sample_names_diploid)
 colnames(sample_names_bind)[2] <- "sampleID"
 ```
 
-
+#change the name of column name to full [name]
 ```{r}
 colnames(sample_names_bind)[1] <-"full"
 ```
 
 
-Merge the two data frames together by "full
+Merge the two data frames together by "full"
 ```{r}
 diploid_metadata <- merge(sample_names_bind, dip, by = "full")
 ```
@@ -152,7 +154,7 @@ diploid_metadata <- merge(sample_names_bind, dip, by = "full")
 diploid_metadata$CLONE <- make.unique(diploid_metadata$CLONE)
 ```
 
-Add populations assignments
+#Add populations assignments
 ```{r}
 
 
@@ -170,32 +172,32 @@ population <- ifelse(tetraploid_metadata$species == "phu" & tetraploid_metadata$
 ```
 
 
-attach to diploid_metadata
+#attach to diploid_metadata
 ```{r}
 pops_attach <- cbind(population, diploid_metadata)
 ```
 
-use merge to reorder with structure_file$X
+#use merge to reorder with structure_file$X
 ```{r}
 ord <- structure_file$sampleID #order
 pops_structure <- pops_attach[order(match(pops_attach$sampleID,ord)),]
 ```
 
-As .data.frame to be passed to function export structure
+#As .data.frame to be passed to function export structure
 ```{r}
 population <- as.data.frame(pops_structure$population)
 sampleIDs <- as.data.frame(pops_structure$CLONE)
 ```
 
-Bind dataframes
+#Bind dataframes
 ```{r}
 pops <- cbind(sampleIDs, population)
 ```
 
 
-Export to structure
+#Export to structure to be imported to genodive
 ```{r}
-Export_Structure(mydataNaive,file = "~/Documents/sandbox/diploid/diploid_original_structure_7723", extraCols = population)
+Export_Structure(mydataNaive,file = "~/Documents/diploid/diploid_original_structure_7723", extraCols = population)
 ```
 
-Resulting file can now be read into GenoDive for population and diversity analysis
+#Resulting file can now be read into GenoDive for population and diversity analysis
